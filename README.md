@@ -10,7 +10,7 @@ O objetivo validado foi:
 
 ## **Kafka**
 
-O Kafka foi configurado no arquivo kafka.yaml.
+O Kafka foi configurado no arquivo [kafka.yaml](./kafka.yaml).
 
 O ponto essencial para o OAuth funcionar foi configurar a CA do RHBK nos dois lugares:
 
