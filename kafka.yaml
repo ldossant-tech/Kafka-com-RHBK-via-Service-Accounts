@@ -1,0 +1,88 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: kafka-cluster
+  namespace: authorization
+  annotations:
+    strimzi.io/node-pools: enabled
+    strimzi.io/kraft: enabled
+spec:
+  kafka:
+    version: 4.0.0
+    metadataVersion: 4.0-IV3
+
+    # Autorizacao usando Keycloak Authorization Services.
+    # Mantido como type: keycloak porque este e o schema nativo do Strimzi para OAuth authz.
+    authorization:
+      type: keycloak
+      clientId: kafka
+      tokenEndpointUri: https://keycloak.apps.ldossant.vmware.tamlab.rdu2.redhat.com/realms/kafka/protocol/openid-connect/token
+      delegateToKafkaAcls: false
+      # Necessario para o authorizer confiar no HTTPS do RHBK.
+      tlsTrustedCertificates:
+        - secretName: oauth-server-cert
+          pattern: "*.crt"
+      superUsers:
+        # O principal precisa bater com o claim usado no listener OAuth.
+        # Como o listener usa preferred_username, "admin" precisa ser o preferred_username do token.
+        - admin
+
+    listeners:
+      # Listener interno sem TLS para usuarios SCRAM dentro do cluster.
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+        authentication:
+          type: scram-sha-512
+
+      # Listener interno com TLS para usuarios SCRAM dentro do cluster.
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: scram-sha-512
+
+      # Listener externo via OpenShift Route usando SASL/OAUTHBEARER.
+      - name: external
+        port: 9094
+        type: route
+        tls: true
+        authentication:
+          type: oauth
+          validIssuerUri: https://keycloak.apps.ldossant.vmware.tamlab.rdu2.redhat.com/realms/kafka
+          jwksEndpointUri: https://keycloak.apps.ldossant.vmware.tamlab.rdu2.redhat.com/realms/kafka/protocol/openid-connect/certs
+          userNameClaim: preferred_username
+          checkIssuer: true
+          # Deixe false enquanto os tokens do RHBK nao tiverem aud=kafka.
+          # Se voce configurar o client/realm para emitir aud=kafka, mude para true.
+          checkAudience: false
+          enableOauthBearer: true
+          enablePlain: false
+          # tambem precisa confiar na CA do RHBK para conseguir baixar o JWKS.
+          tlsTrustedCertificates:
+            - secretName: oauth-server-cert
+              pattern: "*.crt"
+
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+
+    metricsConfig:
+      type: jmxPrometheusExporter
+      valueFrom:
+        configMapKeyRef:
+          name: kafka-metrics
+          key: kafka-metrics-config.yml
+
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+
+  kafkaExporter:
+    topicRegex: ".*"
+    groupRegex: ".*"
