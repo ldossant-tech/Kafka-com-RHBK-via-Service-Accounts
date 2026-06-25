@@ -636,3 +636,7 @@ Correcao:
 - Para service accounts, use Role policies. Service accounts nao recebem groups como usuarios comuns.
 - No Evaluate, teste a service account como usuario: `service-account-orders-producer` ou `service-account-orders-consumer`.
 - Para este setup, use Scope-based permissions.
+
+## Aviso final
+
+Este repositorio e uma recomendacao tecnica para demonstrar uma arquitetura de observabilidade com OpenTelemetry no OpenShift. Ele nao substitui a documentacao oficial da Red Hat. Para implantacoes em ambiente produtivo, siga sempre as documentacoes oficiais, a matriz de suporte vigente, as politicas internas e o dimensionamento recomendado para a versao do OpenShift e dos Operators instalados.
